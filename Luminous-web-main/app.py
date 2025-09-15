@@ -166,6 +166,7 @@ def load_data():
 # In app.py
 
 # In app.py
+# In app.py
 def find_or_create_oauth_user(profile):
     """
     Finds a user by email to link accounts, or creates a new user.
@@ -184,7 +185,11 @@ def find_or_create_oauth_user(profile):
         # User found! Link the new provider to this existing account.
         user_record = next((u for u in users if u['id'] == existing_user_id), None)
         if not user_record:
-            return "Error: Data inconsistency found.", 500
+            # Change this line
+            # return "Error: Data inconsistency found.", 500
+            
+            # TO THIS LINE:
+            return redirect(url_for('error_page')) # You will need to create an error_page route
         
         # Add the provider's ID to the user's record
         if profile['provider'] == 'google':
@@ -1627,6 +1632,15 @@ def authorize_github():
         'picture': user_info.get('avatar_url')
     }
     return find_or_create_oauth_user(profile)
+
+# In app.py
+@app.route('/error')
+def error_page():
+    # You can pass a specific error message to the template if needed
+    return render_template('error.html', error_message="An unexpected error occurred. Please try again later.")
+
+# And you would also need to create a new HTML file named error.html
+# in your 'templates' directory.
 
 if __name__ == '__main__':
     generate_analytics_data()
