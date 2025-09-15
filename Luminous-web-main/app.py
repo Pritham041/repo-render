@@ -1595,19 +1595,32 @@ def login_google():
     redirect_uri = url_for('authorize_google', _external=True)
     return google.authorize_redirect(redirect_uri)
 
+@app.route('/oauth-result')
+def oauth_result():
+    """Displays a branded page after OAuth login (success or error)."""
+    status = request.args.get('status', 'success')
+    message = request.args.get('message', 'Login successful! Welcome to Luminous Home System.')
+    return render_template('oauth_result.html', status=status, message=message)
+
 @app.route('/google/callback')
 def authorize_google():
-    token = google.authorize_access_token()
-    user_info = google.get('userinfo').json()
-    
-    profile = {
-        'provider': 'google',
-        'provider_id': user_info.get('sub'),  # 'sub' is the unique ID from Google
-        'name': user_info.get('name'),
-        'email': user_info.get('email'),
-        'picture': user_info.get('picture')
-    }
-    return find_or_create_oauth_user(profile)
+    try:
+        token = google.autmehorize_access_token()
+        user_info = google.get('userinfo').json()
+        profile = {
+            'provider': 'google',
+            'provider_id': user_info.get('sub'),
+            'name': user_info.get('name'),
+            'email': user_info.get('email'),
+            'picture': user_info.get('picture')
+        }
+        response = find_or_create_oauth_user(profile)
+        # On success, redirect to branded result page
+        return redirect(url_for('oauth_result', status='success', message='Google login successful!'))
+    except Exception as e:
+        # On error, redirect to branded result page
+        return redirect(url_for('oauth_result', status='error', message='Google login failed. Please try again.'))
+
 
 @app.route('/login/github')
 def login_github():
@@ -1616,22 +1629,25 @@ def login_github():
 
 @app.route('/github/callback')
 def authorize_github():
-    token = github.authorize_access_token()
-    user_info = github.get('user').json()
-    user_emails = github.get('user/emails').json()
-    primary_email = next((e['email'] for e in user_emails if e['primary']), None)
-    
-    if not primary_email:
-        return "Error: Could not retrieve a primary email from GitHub.", 400
-        
-    profile = {
-        'provider': 'github',
-        'provider_id': user_info.get('id'), # 'id' is the unique ID from GitHub
-        'name': user_info.get('name') or user_info.get('login'),
-        'email': primary_email,
-        'picture': user_info.get('avatar_url')
-    }
-    return find_or_create_oauth_user(profile)
+    try:
+        token = github.authorize_access_token()
+        user_info = github.get('user').json()
+        user_emails = github.get('user/emails').json()
+        primary_email = next((e['email'] for e in user_emails if e['primary']), None)
+        if not primary_email:
+            return redirect(url_for('oauth_result', status='error', message='Could not retrieve GitHub email.'))
+        profile = {
+            'provider': 'github',
+            'provider_id': user_info.get('id'),
+            'name': user_info.get('name') or user_info.get('login'),
+            'email': primary_email,
+            'picture': user_info.get('avatar_url')
+        }
+        response = find_or_create_oauth_user(profile)
+        return redirect(url_for('oauth_result', status='success', message='GitHub login successful!'))
+    except Exception as e:
+        return redirect(url_for('oauth_result', status='error', message='GitHub login failed. Please try again.'))
+
 
 # In app.py
 @app.route('/error')
